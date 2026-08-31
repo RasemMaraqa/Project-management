@@ -77,7 +77,24 @@ class WorkspaceMember(Base):
         nullable=False,
         default=WorkspaceRole.MEMBER
     )
-    workspace = relationship("Workspace")
-    user = relationship("User")
+    
 
+class Project(Base):
+    __tablename__ = "projects"
 
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+    desc: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True
+    )
+
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id"),
+        nullable=False
+    )

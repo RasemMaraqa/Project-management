@@ -29,7 +29,7 @@ class Token(BaseModel):
 
 class WorkspaceCreate(BaseModel):
     name: str
-    role: WorkspaceRole = WorkspaceRole.OWNER
+    
 
 
 class WorkspaceResponse(BaseModel):
@@ -55,3 +55,23 @@ class MemberResponse(BaseModel):
     username: str
     email: EmailStr
     role: WorkspaceRole
+
+
+class ProjectCreate(BaseModel):
+    name: str
+    desc: str | None = None
+    
+    
+class ProjectUpdate(BaseModel):
+    name: str | None = None
+    desc: str | None = None
+    
+    
+class ProjectResponse(BaseModel):
+    id: int
+    name: str
+    desc: str | None
+    workspace_id: int
+    
+    class Config:
+        from_attributes = True 

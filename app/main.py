@@ -11,6 +11,11 @@ from app.security import create_access_token, verify_password
 from app.dependencies import get_current_user
 from app.permissions import get_workspace_member, require_workspace_admin
 from fastapi.security import OAuth2PasswordRequestForm
+from app.models import Project
+from app.permissions import get_workspace_member
+from app.schemas import ProjectCreate, ProjectResponse
+
+
 app = FastAPI(title="Project management")
 
 '''hello there its me rasem this msg was written in the first
@@ -350,3 +355,79 @@ def get_workspace_members(
         }
         for member, user in members
     ]
+
+
+@app.post(
+    "/workspaces/{workspace_id}/projects",
+    response_model=ProjectResponse
+)
+def create_project(
+    workspace_id: int,
+    project_data: ProjectCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    project = Project(
+        name=project_data.name,
+        desc=project_data.desc,
+        workspace_id=workspace_id
+    )
+
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+
+    return project
+
+
+@app.get(
+    "/workspaces/{workspace_id}/projects",
+    response_model=list[ProjectResponse])
+def get_projects(
+    workspace_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    projects = (
+        db.query(Project)
+        .filter(Project.workspace_id == workspace_id)
+        .all()
+    )
+
+    return projects
