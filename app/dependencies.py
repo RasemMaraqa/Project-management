@@ -9,7 +9,7 @@ from app.models import User
 from app.security import ALGORITHM
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 def get_current_user(
@@ -18,8 +18,7 @@ def get_current_user(
 ):
     credentials_exception = HTTPException(
         status_code=401,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
+        detail="Could not validate credentials"
     )
 
     try:

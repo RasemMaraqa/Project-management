@@ -1,16 +1,15 @@
 from fastapi import FastAPI, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import engine, get_db
-from app.models import User
+from app.models import User, Workspace, WorkspaceMember
 from app.security import hash_password
-from app.schemas import UserCreate, UserResponse
+from app.schemas import UserCreate, UserResponse, WorkspaceCreate, WorkspaceResponse
 from app.config import settings
-from app.schemas import LoginRequest, Token
+from app.schemas import Token
 from app.security import create_access_token, verify_password
 from app.dependencies import get_current_user
-
+from fastapi.security import OAuth2PasswordRequestForm
 app = FastAPI(title="Project management")
 
 '''hello there its me rasem this msg was written in the first
@@ -37,6 +36,25 @@ def health_check():
 
 @app.post("/users", response_model=UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    existing_user = db.query(User).filter(
+        User.email == user.email
+        ).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=409,
+            detail="email already registered"
+        )
+    existing_username = db.query(User).filter(
+            User.username == user.username
+            ).first()
+
+    if existing_username:
+        raise HTTPException(
+                status_code=409,
+                detail="username already registered"
+            )
+
     new_user = User(
         email=user.email,
         username=user.username,
@@ -48,21 +66,29 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-def authenticate_user(email: str, password: str, db: Session) -> User:
-    user = db.query(User).filter(User.email == email).first()
+@app.post("/login", response_model=Token)
+def Login(
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        db: Session = Depends(get_db)
+        ):
+    user = db.query(User).filter(User.email == form_data.username).first()
 
-    if not user or not verify_password(password, user.password_hash):
+    if not user:
         raise HTTPException(
             status_code=401,
-            detail="Invalid email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Invalid email or password"
         )
 
-    return user
+    if not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
 
-
-def create_login_response(user: User) -> dict:
-    access_token = create_access_token(user.id, settings.secret_key)
+    access_token = create_access_token(
+        user.id,
+        settings.secret_key
+    )
 
     return {
         "access_token": access_token,
@@ -70,23 +96,34 @@ def create_login_response(user: User) -> dict:
     }
 
 
-@app.post("/login", response_model=Token)
-def login(user_data: LoginRequest, db: Session = Depends(get_db)):
-    """JSON login endpoint retained for API clients."""
-    user = authenticate_user(user_data.email, user_data.password_hash, db)
-    return create_login_response(user)
+@app.get("/me", response_model=UserResponse)
+def read_me(current_user: User = Depends(get_current_user)):
+    return current_user
 
 
-@app.post("/token", response_model=Token)
-def token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+@app.post("/workspaces", response_model=WorkspaceResponse)
+def create_workspace(
+    workspace: WorkspaceCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    """OAuth2 password-flow endpoint used by the OpenAPI Authorize dialog.
 
-    Enter the user's email in the dialog's ``username`` field.
-    """
-    user = authenticate_user(form_data.username, form_data.password, db)
-    return create_login_response(user)
+    new_workspace = Workspace(
+        name=workspace.name,
+        owner_id=current_user.id
+    )
 
+    db.add(new_workspace)
+    db.commit()
+    db.refresh(new_workspace)
 
+    member = WorkspaceMember(
+        workspace_id=new_workspace.id,
+        user_id=current_user.id,
+        role="owner"
+    )
+
+    db.add(member)
+    db.commit()
+
+    return new_workspace

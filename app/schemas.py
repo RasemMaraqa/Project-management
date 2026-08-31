@@ -14,7 +14,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -24,3 +24,16 @@ class LoginRequest(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+
+class WorkspaceCreate(BaseModel):
+    name: str
+
+
+class WorkspaceResponse(BaseModel):
+    id: int
+    name: str
+    owner_id: int
+
+    class Config:
+        from_attributes = True
