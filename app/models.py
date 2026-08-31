@@ -2,6 +2,7 @@ from app.db import Base
 from datetime import datetime
 from sqlalchemy import DateTime, String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from enum import Enum
 
 
 class User(Base):
@@ -41,6 +42,19 @@ class Workspace(Base):
         nullable=False
     )
     owner = relationship("User")
+    members = relationship(
+        "WorkspaceMember",
+        cascade="all, delete-orphan"
+    )
+
+
+# i added the emoji not the AI (dont be a nig)
+
+
+class WorkspaceRole(str, Enum):
+    OWNER = "Owner 🎩"
+    ADMIN = "Admin 🕴️"
+    MEMBER = "Member 🧔"
 
 
 class WorkspaceMember(Base):
@@ -49,7 +63,7 @@ class WorkspaceMember(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     workspace_id: Mapped[int] = mapped_column(
-        ForeignKey("workspaces.id"),
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False
     )
 
@@ -59,9 +73,11 @@ class WorkspaceMember(Base):
     )
 
     role: Mapped[str] = mapped_column(
-        String(50),
+        String(20),
         nullable=False,
-        default="member"
+        default=WorkspaceRole.MEMBER
     )
     workspace = relationship("Workspace")
     user = relationship("User")
+
+

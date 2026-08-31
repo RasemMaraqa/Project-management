@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from app.models import WorkspaceRole
 
 
 class UserCreate(BaseModel):
@@ -28,6 +29,7 @@ class Token(BaseModel):
 
 class WorkspaceCreate(BaseModel):
     name: str
+    role: WorkspaceRole = WorkspaceRole.OWNER
 
 
 class WorkspaceResponse(BaseModel):
@@ -37,3 +39,19 @@ class WorkspaceResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class WorkspaceUpdate(BaseModel):
+    name: str
+
+
+class MemberCreate(BaseModel):
+    user_id: int
+    role: WorkspaceRole = WorkspaceRole.MEMBER
+
+
+class MemberResponse(BaseModel):
+    user_id: int
+    username: str
+    email: EmailStr
+    role: WorkspaceRole
