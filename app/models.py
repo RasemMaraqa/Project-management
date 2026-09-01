@@ -48,12 +48,11 @@ class Workspace(Base):
     )
 
 
-# i added the emoji not the AI (dont be a nig)
+# i added the emoji not an AI (dont be a nig)
 
 
 class WorkspaceRole(str, Enum):
     OWNER = "Owner 🎩"
-    ADMIN = "Admin 🕴️"
     MEMBER = "Member 🧔"
 
 
@@ -77,7 +76,7 @@ class WorkspaceMember(Base):
         nullable=False,
         default=WorkspaceRole.MEMBER
     )
-    
+
 
 class Project(Base):
     __tablename__ = "projects"
@@ -98,3 +97,57 @@ class Project(Base):
         ForeignKey("workspaces.id"),
         nullable=False
     )
+
+
+class TaskStatus(str, Enum):
+    TODO = "To Do"
+    IN_PROGRESS = "In Progress"
+    DONE = "Done ✅"
+
+
+class TaskPriority(str, Enum):
+    ONE = "1"
+    TWO = "2"
+    THREE = "3"
+    FOUR = "4"
+    FIVE = "5"
+
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    title: Mapped[str] = mapped_column(
+        String[150],
+        nullable=False)
+
+    desc: Mapped[str | None] = mapped_column(
+        String[1000],
+        nullable=False
+    )
+
+    status: Mapped[TaskStatus] = mapped_column(
+        nullable=False,
+        default=TaskStatus.TODO
+    )
+
+    priority: Mapped[TaskPriority] = mapped_column(
+        nullable=False,
+        default=TaskPriority.THREE
+    )
+
+    due_date: Mapped[datetime | None] = mapped_column(
+        nullable=True
+    )
+
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id"),
+        nullable=False
+    )
+
+    assigned_to: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=True
+    )
+

@@ -2,10 +2,9 @@ from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-
 from app.config import settings
 from app.db import get_db
-from app.models import User
+from app.models import User, Project, Task, Workspace
 from app.security import ALGORITHM
 
 
@@ -42,3 +41,63 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+
+def get_project(
+    project_id: int,
+    db: Session = Depends(get_db)
+) -> Project:
+
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    return project
+
+
+def get_task(
+    task_id: int,
+    db: Session = Depends(get_db)
+) -> Task:
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id)
+        .first()
+    )
+
+    if not task:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    return task
+
+
+def get_project_workspace(
+    project: Project,
+    db: Session
+) -> Workspace:
+    workspace = (
+        db.query(Workspace)
+        .filter(
+            Workspace.id == project.workspace_id
+        )
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    return workspace

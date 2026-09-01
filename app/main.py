@@ -2,9 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.db import engine, get_db
-from app.models import User, Workspace, WorkspaceMember
+from app.models import User, Workspace, WorkspaceMember, Task
 from app.security import hash_password
-from app.schemas import UserCreate, UserResponse, WorkspaceCreate, WorkspaceResponse, WorkspaceUpdate, WorkspaceRole, MemberResponse, MemberCreate
+from app.schemas import UserCreate, UserResponse, WorkspaceCreate, TaskResponse, TaskCreate, TaskUpdate, WorkspaceResponse, WorkspaceUpdate, WorkspaceRole, MemberResponse, MemberCreate
 from app.config import settings
 from app.schemas import Token
 from app.security import create_access_token, verify_password
@@ -12,7 +12,6 @@ from app.dependencies import get_current_user
 from app.permissions import get_workspace_member, require_workspace_admin
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models import Project
-from app.permissions import get_workspace_member
 from app.schemas import ProjectCreate, ProjectResponse
 
 
@@ -21,7 +20,6 @@ app = FastAPI(title="Project management")
 '''hello there its me rasem this msg was written in the first
 commit of this project,i hope somebody see it cuz that means
 that i have completed my project'''
-
 
 @app.get("/")
 def root():
@@ -379,7 +377,7 @@ def create_project(
             detail="Workspace not found"
         )
 
-    get_workspace_member(
+    require_workspace_admin(
         workspace,
         current_user,
         db
@@ -431,3 +429,329 @@ def get_projects(
     )
 
     return projects
+
+
+@app.post(
+    "/projects/{project_id}/tasks",
+    response_model=TaskResponse
+         )
+def create_task(
+    project_id: int,
+    taskdata: TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == project.workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    if taskdata.assigned_to is not None:
+        assigned_user = (
+            db.query(User)
+            .filter(User.id == taskdata.assigned_to)
+            .first()
+        )
+
+        if not assigned_user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+
+        get_workspace_member(
+            workspace,
+            current_user,
+            db
+        )
+
+    task = Task(
+        title=taskdata.title,
+        desc=taskdata.desc,
+        priority=taskdata.priority,
+        due_date=taskdata.due_date,
+        assigned_to=taskdata.assigned_to,
+        project_id=project_id
+    )
+
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+
+    return task
+
+
+@app.get(
+    "/projects/{project_id}/tasks",
+    response_model=list[TaskResponse]
+)
+def get_tasks(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == project.workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+                    status_code=404,
+                    detail="Workspace not found"
+        )
+
+    get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    tasks = (
+        db.query(Task)
+        .filter(Task.project_id == project_id)
+        .all()
+    )
+
+    return tasks
+
+
+@app.get(
+    "/tasks/{task_id}",
+    response_model=TaskResponse
+)
+def get_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id)
+        .first()
+    )
+    if not task:
+        raise HTTPException(
+                            status_code=404,
+                            detail="Task not found"
+        )
+
+    project = (
+        db.query(Project)
+        .filter(Project.id == task.project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == project.workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    return task
+
+
+@app.patch(
+    "/tasks/{task_id}",
+    response_model=TaskResponse
+)
+def update_task(
+    task_id: int,
+    task_data: TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id)
+        .first()
+    )
+
+    if not task:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    project = (
+        db.query(Project)
+        .filter(Project.id == task.project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == project.workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    if task_data.assigned_to is not None:
+        assigned_user = (
+            db.query(User)
+            .filter(User.id == task_data.assigned_to)
+            .first()
+        )
+
+        if not assigned_user:
+            raise HTTPException(
+                status_code=404,
+                detail="Assigned user not found"
+            )
+
+        get_workspace_member(
+            workspace,
+            assigned_user,
+            db
+        )
+
+    update_data = task_data.model_dump(
+        exclude_unset=True
+    )
+
+    for field, value in update_data.items():
+        setattr(task, field, value)
+
+    db.commit()
+    db.refresh(task)
+
+    return task
+
+
+@app.delete("/tasks/{task_id}")
+def delete_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    task = (
+        db.query(Task)
+        .filter(Task.id == task_id)
+        .first()
+    )
+
+    if not task:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    project = (
+        db.query(Project)
+        .filter(Project.id == task.project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    workspace = (
+            db.query(Workspace)
+            .filter(
+             Workspace.id == project.workspace_id
+            )
+            .first()
+        )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    member = get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    if member.role not in (
+        WorkspaceRole.OWNER,
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Admin permission required"
+        )
+
+    db.delete(task)
+    db.commit()
+
+    return {
+        "message": "Task deleted successfully"
+    }

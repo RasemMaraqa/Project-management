@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-
-from app.models import User, Workspace, WorkspaceMember, WorkspaceRole
+from app.dependencies import get_project_workspace
+from app.models import User, Workspace, WorkspaceMember, WorkspaceRole, Project
 
 
 def get_workspace_member(
@@ -36,7 +36,6 @@ def require_workspace_admin(
 
     if member.role not in (
         WorkspaceRole.OWNER,
-        WorkspaceRole.ADMIN
     ):
         raise HTTPException(
             status_code=403,
@@ -44,3 +43,22 @@ def require_workspace_admin(
         )
 
     return member
+
+
+def require_project_access(
+    project: Project,
+    current_user: User,
+    db: Session
+):
+    workspace = get_project_workspace(
+        project,
+        db
+    )
+
+    member = get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    return workspace, member
