@@ -150,4 +150,8 @@ class Task(Base):
         ForeignKey("users.id"),
         nullable=True
     )
-
+    project = relationship("Project")
+    assigned_user = relationship(
+        "User",
+        foreign_keys=[assigned_to]
+    )

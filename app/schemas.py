@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr
 from app.models import WorkspaceRole, TaskPriority, TaskStatus
 from datetime import datetime
 
+
 class UserCreate(BaseModel):
     email: EmailStr
     username: str
@@ -102,6 +103,13 @@ class TaskResponse(BaseModel):
     due_date: datetime | None
     project_id: int
     assigned_to: int | None
-    
+
     class Config:
         from_attributes = True
+
+
+class TaskListResponse(BaseModel):
+    items: list[TaskResponse]
+    page: int
+    limit: int
+    total: int
