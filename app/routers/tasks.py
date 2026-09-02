@@ -16,7 +16,11 @@ from app.models import (
     TaskStatus
 )
 
-from app.permissions import require_project_access, Permission, require_permission
+from app.permissions import (
+    require_project_access,
+    Permission,
+    require_permission
+)
 from app.schemas import (
     TaskUpdate,
     TaskResponse,
