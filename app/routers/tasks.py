@@ -11,13 +11,12 @@ from app.models import (
     User,
     Task,
     Project,
-    WorkspaceRole,
     Workspace,
     TaskPriority,
     TaskStatus
 )
 
-from app.permissions import require_project_access
+from app.permissions import require_project_access, Permission, require_permission
 from app.schemas import (
     TaskUpdate,
     TaskResponse,
@@ -108,13 +107,16 @@ def delete_task(
         db
     )
 
-    if member.role not in (
-        WorkspaceRole.OWNER,
-    ):
-        raise HTTPException(
-            status_code=403,
-            detail="Admin permission required"
+    user = get_workspace_member(
+        workspace,
+        current_user,
+        db
         )
+
+    require_permission(
+        user,
+        Permission.TASK_CREATE
+    )
 
     db.delete(task)
     db.commit()

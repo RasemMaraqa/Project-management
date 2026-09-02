@@ -1,6 +1,6 @@
 from app.db import Base
 from datetime import datetime
-from sqlalchemy import DateTime, String, ForeignKey
+from sqlalchemy import DateTime, String, ForeignKey, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from enum import Enum
 
@@ -47,13 +47,13 @@ class Workspace(Base):
         cascade="all, delete-orphan"
     )
 
+    roles: Mapped[list["Role"]] = relationship(
+        back_populates="workspace",
+        cascade="all, delete-orphan"
+    )
 
-# i added the emoji not an AI (dont be a nig)
 
-
-class WorkspaceRole(str, Enum):
-    OWNER = "Owner 🎩"
-    MEMBER = "Member 🧔"
+# ur here too , nice to meet u mate
 
 
 class WorkspaceMember(Base):
@@ -71,10 +71,13 @@ class WorkspaceMember(Base):
         nullable=False
     )
 
-    role: Mapped[str] = mapped_column(
-        String(20),
-        nullable=False,
-        default=WorkspaceRole.MEMBER
+    role_id: Mapped[int] = mapped_column(
+        ForeignKey("roles.id"),
+        nullable=False
+    )
+
+    role: Mapped["Role | None"] = relationship(
+        back_populates="members"
     )
 
 
@@ -102,7 +105,7 @@ class Project(Base):
 class TaskStatus(str, Enum):
     TODO = "To Do"
     IN_PROGRESS = "In Progress"
-    DONE = "Done ✅"
+    DONE = "Done"
 
 
 class TaskPriority(str, Enum):
@@ -154,4 +157,70 @@ class Task(Base):
     assigned_user = relationship(
         "User",
         foreign_keys=[assigned_to]
+    )
+
+
+role_permissions = Table(
+    "role_permissions",
+    Base.metadata,
+
+
+    Column(
+        "role_id",
+        ForeignKey("roles.id", ondelete="CASCADE"),
+        primary_key=True
+    ),
+
+
+    Column(
+        "permission_id",
+        ForeignKey("permissions.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+)
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    name: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False
+    )
+
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    workspace: Mapped["Workspace"] = relationship(
+        back_populates="roles"
+    )
+
+    permissions: Mapped[list["Permission"]] = relationship(
+        secondary="role_permissions",
+        back_populates="roles"
+    )
+
+    members: Mapped[list["WorkspaceMember"]] = relationship(
+        back_populates="role"
+    )
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    name: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        nullable=False
+    )
+
+    roles: Mapped[list["Role"]] = relationship(
+        secondary="role_permissions",
+        back_populates="permissions"
     )

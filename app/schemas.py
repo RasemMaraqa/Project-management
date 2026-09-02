@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from app.models import WorkspaceRole, TaskPriority, TaskStatus
+from app.models import TaskPriority, TaskStatus
 from datetime import datetime
 
 
@@ -47,14 +47,14 @@ class WorkspaceUpdate(BaseModel):
 
 class MemberCreate(BaseModel):
     user_id: int
-    role: WorkspaceRole = WorkspaceRole.MEMBER
+    role_id: int
 
 
 class MemberResponse(BaseModel):
     user_id: int
     username: str
     email: EmailStr
-    role: WorkspaceRole
+    role: str
 
 
 class ProjectCreate(BaseModel):

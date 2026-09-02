@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.permissions import get_workspace_member
+from app.permissions import (
+    get_workspace_member,
+    require_permission,
+    Permission as Permissions
+    )
 from app.db import get_db
 from app.dependencies import (
     get_current_user,
@@ -9,14 +13,14 @@ from app.dependencies import (
 from app.models import (
     User,
     Project,
-    Workspace,
+    Workspace
 )
 from app.schemas import (
     ProjectCreate,
     ProjectResponse,
+    ProjectUpdate
 )
 
-from app.permissions import require_workspace_admin
 
 router = APIRouter(
     tags=["Projects"]
@@ -45,10 +49,14 @@ def create_project(
             detail="Workspace not found"
         )
 
-    require_workspace_admin(
+    user = get_workspace_member(
         workspace,
         current_user,
         db
+    )
+    require_permission(
+        user,
+        Permissions.PROJECT_CREATE
     )
 
     project = Project(
@@ -84,10 +92,14 @@ def get_projects(
             detail="Workspace not found"
         )
 
-    get_workspace_member(
+    user = get_workspace_member(
         workspace,
         current_user,
         db
+    )
+    require_permission(
+        user,
+        Permissions.PROJECT_VIEW
     )
 
     projects = (
@@ -97,3 +109,110 @@ def get_projects(
     )
 
     return projects
+
+
+@router.patch(
+    "/projects/{project_id}",
+    response_model=ProjectResponse
+)
+def update_project(
+    project_id: int,
+    project_data: ProjectUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == project.workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    user = get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    require_permission(
+        user,
+        Permissions.PROJECT_UPDATE
+    )
+
+    update_data = project_data.model_dump(
+        exclude_unset=True
+    )
+
+    for field, value in update_data.items():
+        setattr(project, field, value)
+
+    db.commit()
+    db.refresh(project)
+
+    return project
+
+
+@router.delete("/projects/{project_id}")
+def delete_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == project.workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    user = get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    require_permission(
+        user,
+        Permissions.PROJECT_DELETE
+    )
+
+    db.delete(project)
+    db.commit()
+
+    return {
+        "message": "Project deleted successfully"
+    }
