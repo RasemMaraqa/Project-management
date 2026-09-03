@@ -81,6 +81,11 @@ class Permission(str, Enum):
     TASK_UPDATE = "task:update"
     TASK_DELETE = "task:delete"
 
+    ROLE_CREATE = "role:create"
+    ROLE_VIEW = "role:view"
+    ROLE_UPDATE = "role:update"
+    ROLE_DELETE = "role:delete"
+
 
 DEFAULT_ROLE_PERMISSIONS = {
     "Owner": {
@@ -102,11 +107,15 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.TASK_CREATE,
         Permission.TASK_UPDATE,
         Permission.TASK_DELETE,
+
+        Permission.ROLE_VIEW,
+        Permission.ROLE_CREATE,
+        Permission.ROLE_UPDATE,
+        Permission.ROLE_DELETE
     },
     "Admin": {
         Permission.WORKSPACE_VIEW,
         Permission.WORKSPACE_UPDATE,
-        Permission.WORKSPACE_DELETE,
 
         Permission.MEMBER_VIEW,
         Permission.MEMBER_INVITE,
@@ -122,6 +131,10 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.TASK_CREATE,
         Permission.TASK_UPDATE,
         Permission.TASK_DELETE,
+        
+        Permission.ROLE_VIEW,
+        Permission.ROLE_CREATE,
+        Permission.ROLE_UPDATE,
     },
     "Member": {
         Permission.WORKSPACE_VIEW,
@@ -135,6 +148,8 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.TASK_VIEW,
         Permission.TASK_CREATE,
         Permission.TASK_UPDATE,
+
+        Permission.ROLE_VIEW,
     }
 }
 

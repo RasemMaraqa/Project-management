@@ -42,10 +42,29 @@ def get_task_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    require_project_access(
-        task.project,
+    workspace = (
+        db.query(Workspace)
+        .filter(
+            Workspace.id == task.project.workspace_id
+        )
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    member = get_workspace_member(
+        workspace,
         current_user,
         db
+    )
+
+    require_permission(
+        member,
+        Permission.TASK_VIEW
     )
 
     return task

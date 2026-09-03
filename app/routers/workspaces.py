@@ -11,18 +11,23 @@ from app.models import (
     Workspace,
     WorkspaceMember,
     Role,
-    Permission,
+    Permission
 )
 from app.schemas import (
     WorkspaceResponse,
     WorkspaceCreate,
     WorkspaceUpdate,
     MemberCreate,
-    MemberResponse
+    MemberResponse,
+    RoleCreate,
+    RoleUpdate,
+    MemberRoleUpdate
 )
 
-from app.permissions import require_permission
-
+from app.permissions import (
+    require_permission,
+    Permission as permission_per
+)
 router = APIRouter(
     prefix="/workspaces",
     tags=["Workspaces"]
@@ -94,6 +99,20 @@ def create_workspace(
     return new_workspace
 
 
+@router.get("/permissions")
+def get_permissions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    permissions = (
+        db.query(Permission)
+        .order_by(Permission.id)
+        .all()
+    )
+
+    return permissions
+
+
 @router.get("/{workspace_id}", response_model=WorkspaceResponse)
 def get_workspace(
     workspace_id: int,
@@ -137,12 +156,16 @@ def get_workspace_roles(
             detail="workspace not found"
         )
 
-    get_workspace_member(
+    member = get_workspace_member(
         workspace,
         current_user,
         db
     )
 
+    require_permission(
+        member,
+        permission_per.ROLE_VIEW
+    )
     roles = (
         db.query(Role)
         .filter(Role.workspace_id == workspace_id)
@@ -176,7 +199,7 @@ def update_workspace(
     )
     require_permission(
         user,
-        Permission.WORKSPACE_UPDATE
+        permission_per.WORKSPACE_UPDATE
     )
 
     workspace.name = workspace_data.name
@@ -213,7 +236,7 @@ def delete_workspace(
     )
     require_permission(
         user,
-        Permission.WORKSPACE_DELETE
+        permission_per.WORKSPACE_DELETE
     )
 
     db.delete(workspace)
@@ -248,7 +271,7 @@ def add_member(
 
     require_permission(
         current_member,
-        Permission.MEMBER_INVITE
+        permission_per.MEMBER_INVITE
     )
     user = (
         db.query(User)
@@ -355,3 +378,291 @@ def get_workspace_members(
         }
         for member, user in members
     ]
+
+
+@router.post("/{workspace_id}/roles")
+def create_role(
+    workspace_id: int,
+    role_data: RoleCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    member = get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    require_permission(
+        member,
+        permission_per.ROLE_CREATE
+    )
+
+    existing_role = (
+        db.query(Role)
+        .filter(
+            Role.workspace_id == workspace_id,
+            Role.name == role_data.name
+        )
+        .first()
+    )
+
+    if existing_role:
+        raise HTTPException(
+            status_code=409,
+            detail="role already exist"
+        )
+
+    role = Role(
+        name=role_data.name,
+        workspace_id=workspace_id
+    )
+
+    permissions = (
+        db.query(Permission)
+        .filter(
+            Permission.id.in_(role_data.permission_ids)
+        )
+        .all()
+    )
+
+    role.permissions = permissions
+
+    db.add(role)
+    db.commit()
+    db.refresh(role)
+
+    return role
+
+
+@router.patch("/{workspace_id}/roles/{role_id}")
+def update_role(
+    workspace_id: int,
+    role_id: int,
+    role_data: RoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    member = get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    require_permission(
+        member,
+        permission_per.ROLE_UPDATE
+    )
+
+    role = (
+        db.query(Role)
+        .filter(
+            Role.id == role_id,
+            Role.workspace_id == workspace_id
+        )
+        .first()
+    )
+
+    if not role:
+        raise HTTPException(
+            status_code=404,
+            detail="Role not found"
+        )
+
+    update_data = role_data.model_dump(exclude_unset=True)
+
+    if "name" in update_data:
+        existing_role = (
+            db.query(Role)
+            .filter(
+                Role.workspace_id == workspace_id,
+                Role.name == update_data["name"],
+                Role.id != role_id
+            )
+            .first()
+        )
+
+        if existing_role:
+            raise HTTPException(
+                status_code=409,
+                detail="A role with this name already exists"
+            )
+
+        role.name = update_data["name"]
+
+    if "permission_ids" in update_data:
+        permissions = (
+            db.query(Permission)
+            .filter(
+                Permission.id.in_(
+                    update_data["permission_ids"]
+                )
+            )
+            .all()
+        )
+
+        role.permissions = permissions
+
+    db.commit()
+    db.refresh(role)
+
+    return role
+
+
+@router.delete("/{workspace_id}/roles/{role_id}")
+def delete_role(
+    workspace_id: int,
+    role_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    member = get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    require_permission(
+        member,
+        permission_per.ROLE_DELETE
+    )
+
+    role = (
+        db.query(Role)
+        .filter(
+            Role.id == role_id,
+            Role.workspace_id == workspace_id
+        )
+        .first()
+    )
+
+    if not role:
+        raise HTTPException(
+            status_code=404,
+            detail="Role not found"
+        )
+
+    members = (
+        db.query(WorkspaceMember)
+        .filter(
+            WorkspaceMember.role_id == role.id
+            )
+        .first()
+            )
+
+    if members:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete a role that is assigned to members"
+        )
+    db.delete(role)
+    db.commit()
+
+    return {
+        "message": "Role deleted successfully"
+    }
+
+
+@router.patch("/{workspace_id}/members/{user_id}/role")
+def update_member_role(
+    workspace_id: int,
+    user_id: int,
+    role_data: MemberRoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    workspace = (
+        db.query(Workspace)
+        .filter(Workspace.id == workspace_id)
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    current_member = get_workspace_member(
+        workspace,
+        current_user,
+        db
+    )
+
+    require_permission(
+        current_member,
+        permission_per.MEMBER_UPDATE
+    )
+
+    target_member = (
+        db.query(WorkspaceMember)
+        .filter(
+            WorkspaceMember.workspace_id == workspace_id,
+            WorkspaceMember.user_id == user_id
+        )
+        .first()
+    )
+
+    if not target_member:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace member not found"
+        )
+
+    role = (
+        db.query(Role)
+        .filter(
+            Role.id == role_data.role_id,
+            Role.workspace_id == workspace_id
+        )
+        .first()
+    )
+
+    if not role:
+        raise HTTPException(
+            status_code=400,
+            detail="Role does not belong to this workspace"
+        )
+
+    target_member.role_id = role.id
+
+    db.commit()
+    db.refresh(target_member)
+
+    return target_member

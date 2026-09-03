@@ -113,3 +113,17 @@ class TaskListResponse(BaseModel):
     page: int
     limit: int
     total: int
+
+
+class RoleCreate(BaseModel):
+    name: str
+    permission_ids: list[int] = []
+
+
+class RoleUpdate(BaseModel):
+    name: str | None = None
+    permissions_ids: list[int] | None = None
+
+
+class MemberRoleUpdate(BaseModel):
+    role_id: int
