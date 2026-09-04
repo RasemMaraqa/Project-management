@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 .env
 .pytest_cache/
+
+# Local presentation artifacts
+.codex_build/
+FastAPI-Project-Management-Tutorial.pptx
+~$FastAPI-Project-Management-Tutorial.pptx
+FastAPI-Project-Management-Tutorial.pptx.inspect.ndjson
+FastAPI-Project-Management-Tutorial/

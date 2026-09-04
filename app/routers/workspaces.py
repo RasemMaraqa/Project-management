@@ -1,33 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.permissions import get_workspace_member, DEFAULT_ROLE_PERMISSIONS
-from app.db import get_db
-from app.dependencies import (
-    get_current_user,
-)
 
-from app.models import (
-    User,
-    Workspace,
-    WorkspaceMember,
-    Role,
-    Permission
+from app.authorization import (
+    DEFAULT_ROLE_PERMISSIONS,
+    Permission as permission_per,
+    get_workspace_member,
+    require_permission,
 )
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.models import Permission, Role, User, Workspace, WorkspaceMember
 from app.schemas import (
-    WorkspaceResponse,
-    WorkspaceCreate,
-    WorkspaceUpdate,
     MemberCreate,
     MemberResponse,
+    MemberRoleUpdate,
     RoleCreate,
     RoleUpdate,
-    MemberRoleUpdate
+    WorkspaceCreate,
+    WorkspaceResponse,
+    WorkspaceUpdate,
 )
 
-from app.permissions import (
-    require_permission,
-    Permission as permission_per
-)
+
 router = APIRouter(
     prefix="/workspaces",
     tags=["Workspaces"]

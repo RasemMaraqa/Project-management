@@ -1,6 +1,6 @@
-from app.db import SessionLocal
+from app.database import SessionLocal
 from app.models import Permission as PermissionModel, Role, Workspace
-from app.permissions import Permission, DEFAULT_ROLE_PERMISSIONS
+from app.authorization import DEFAULT_ROLE_PERMISSIONS, Permission
 
 
 def seed_permissions():

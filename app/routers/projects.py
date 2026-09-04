@@ -1,25 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.permissions import (
+
+from app.authorization import (
+    Permission as Permissions,
     get_workspace_member,
     require_permission,
-    Permission as Permissions
-    )
-from app.db import get_db
-from app.dependencies import (
-    get_current_user,
 )
-
-from app.models import (
-    User,
-    Project,
-    Workspace
-)
-from app.schemas import (
-    ProjectCreate,
-    ProjectResponse,
-    ProjectUpdate
-)
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.models import Project, User, Workspace
+from app.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
 
 
 router = APIRouter(

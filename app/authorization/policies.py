@@ -1,8 +1,9 @@
+from enum import Enum
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from app.dependencies import get_project_workspace
-from app.models import User, Workspace, WorkspaceMember, Project
-from enum import Enum
+
+from app.models import User, Workspace, WorkspaceMember
 
 
 def get_workspace_member(
@@ -28,37 +29,15 @@ def get_workspace_member(
     return member
 
 
-def require_workspace_admin(
+def require_workspace_permission(
     workspace: Workspace,
     user: User,
-    db: Session
-):
+    permission: "Permission",
+    db: Session,
+) -> None:
+    """Authorize a user for an action within one workspace."""
     member = get_workspace_member(workspace, user, db)
-
-    require_permission(
-        member,
-        Permission.WORKSPACE_UPDATE
-    )
-    return member
-
-
-def require_project_access(
-    project: Project,
-    current_user: User,
-    db: Session
-):
-    workspace = get_project_workspace(
-        project,
-        db
-    )
-
-    member = get_workspace_member(
-        workspace,
-        current_user,
-        db
-    )
-
-    return workspace, member
+    require_permission(member, permission)
 
 
 class Permission(str, Enum):
@@ -131,7 +110,7 @@ DEFAULT_ROLE_PERMISSIONS = {
         Permission.TASK_CREATE,
         Permission.TASK_UPDATE,
         Permission.TASK_DELETE,
-        
+
         Permission.ROLE_VIEW,
         Permission.ROLE_CREATE,
         Permission.ROLE_UPDATE,

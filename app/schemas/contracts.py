@@ -1,6 +1,8 @@
-from pydantic import BaseModel, EmailStr
-from app.models import TaskPriority, TaskStatus
 from datetime import datetime
+
+from pydantic import BaseModel, EmailStr
+
+from app.models import TaskPriority, TaskStatus
 
 
 class UserCreate(BaseModel):

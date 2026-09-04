@@ -1,25 +1,20 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from app.db import engine, get_db
-from app.models import User
-from app.security import hash_password
-from app.schemas import (
-    UserCreate,
-    UserResponse,
-)
-from app.config import settings
-from app.schemas import Token
-from app.security import create_access_token, verify_password
+
+from app import routers
+from app.core import create_access_token, hash_password, settings, verify_password
+from app.database import engine, get_db
 from app.dependencies import get_current_user
-from fastapi.security import OAuth2PasswordRequestForm
-from app.routers import tasks, projects, workspaces
+from app.models import User
+from app.schemas import Token, UserCreate, UserResponse
 
 
 app = FastAPI(title="Project management")
-app.include_router(tasks.router)
-app.include_router(projects.router)
-app.include_router(workspaces.router)
+app.include_router(routers.tasks_router)
+app.include_router(routers.projects_router)
+app.include_router(routers.workspaces_router)
 
 '''hello there its me rasem this msg was written in the first
 commit of this project,i hope somebody see it cuz that means
