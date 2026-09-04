@@ -3,17 +3,13 @@ from sqlalchemy.orm import Session
 
 from app.authorization import (
     Permission,
+    get_project_workspace,
     get_workspace_member,
-    require_workspace_permission,
+    require_permission,
 )
 from app.database import get_db
-from app.dependencies import (
-    get_current_user,
-    get_project_task,
-    get_workspace,
-    get_workspace_project,
-)
-from app.models import Project, Task, TaskPriority, TaskStatus, User, Workspace
+from app.dependencies import get_current_user
+from app.models import Task, TaskPriority, TaskStatus, User, Workspace
 from app.schemas import TaskCreate, TaskListResponse, TaskResponse, TaskUpdate
 
 
@@ -37,31 +33,51 @@ def validate_assignee(
 
 
 @router.get(
-    "/workspaces/{workspace_id}/projects/{project_id}/tasks/{task_id}",
+    "/projects/{project_id}/tasks/{task_id}",
     response_model=TaskResponse,
 )
 def get_task_endpoint(
-    task: Task = Depends(get_project_task),
-    workspace: Workspace = Depends(get_workspace),
+    project_id: int,
+    task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_workspace_permission(workspace, current_user, Permission.TASK_VIEW, db)
+    project, workspace = get_project_workspace(project_id, db)
+    member = get_workspace_member(workspace, current_user, db)
+    require_permission(member, Permission.TASK_VIEW)
+
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.project_id == project_id
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found in this project")
+
     return task
 
 
 @router.patch(
-    "/workspaces/{workspace_id}/projects/{project_id}/tasks/{task_id}",
+    "/projects/{project_id}/tasks/{task_id}",
     response_model=TaskResponse,
 )
 def update_task(
     task_data: TaskUpdate,
-    task: Task = Depends(get_project_task),
-    workspace: Workspace = Depends(get_workspace),
+    project_id: int,
+    task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_workspace_permission(workspace, current_user, Permission.TASK_UPDATE, db)
+    project, workspace = get_project_workspace(project_id, db)
+    member = get_workspace_member(workspace, current_user, db)
+    require_permission(member, Permission.TASK_UPDATE)
+
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.project_id == project_id
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found in this project")
+
     validate_assignee(task_data.assigned_to, workspace, db)
 
     for field, value in task_data.model_dump(exclude_unset=True).items():
@@ -72,31 +88,42 @@ def update_task(
     return task
 
 
-@router.delete("/workspaces/{workspace_id}/projects/{project_id}/tasks/{task_id}")
+@router.delete("/projects/{project_id}/tasks/{task_id}")
 def delete_task(
-    task: Task = Depends(get_project_task),
-    workspace: Workspace = Depends(get_workspace),
+    project_id: int,
+    task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_workspace_permission(workspace, current_user, Permission.TASK_DELETE, db)
+    project, workspace = get_project_workspace(project_id, db)
+    member = get_workspace_member(workspace, current_user, db)
+    require_permission(member, Permission.TASK_DELETE)
+
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.project_id == project_id
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found in this project")
+
     db.delete(task)
     db.commit()
     return {"message": "Task deleted successfully"}
 
 
 @router.post(
-    "/workspaces/{workspace_id}/projects/{project_id}/tasks",
+    "/projects/{project_id}/tasks",
     response_model=TaskResponse,
 )
 def create_task(
     task_data: TaskCreate,
-    project: Project = Depends(get_workspace_project),
-    workspace: Workspace = Depends(get_workspace),
+    project_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_workspace_permission(workspace, current_user, Permission.TASK_CREATE, db)
+    project, workspace = get_project_workspace(project_id, db)
+    member = get_workspace_member(workspace, current_user, db)
+    require_permission(member, Permission.TASK_CREATE)
     validate_assignee(task_data.assigned_to, workspace, db)
 
     task = Task(**task_data.model_dump(), project_id=project.id)
@@ -107,12 +134,11 @@ def create_task(
 
 
 @router.get(
-    "/workspaces/{workspace_id}/projects/{project_id}/tasks",
+    "/projects/{project_id}/tasks",
     response_model=TaskListResponse,
 )
 def get_tasks(
-    project: Project = Depends(get_workspace_project),
-    workspace: Workspace = Depends(get_workspace),
+    project_id: int,
     status: TaskStatus | None = None,
     priority: TaskPriority | None = None,
     page: int = 1,
@@ -120,14 +146,16 @@ def get_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    require_workspace_permission(workspace, current_user, Permission.TASK_VIEW, db)
+    project, workspace = get_project_workspace(project_id, db)
+    member = get_workspace_member(workspace, current_user, db)
+    require_permission(member, Permission.TASK_VIEW)
 
     if page < 1:
         raise HTTPException(status_code=400, detail="Page must be greater than 0")
     if not 1 <= limit <= 100:
         raise HTTPException(status_code=400, detail="Limit must be between 1 and 100")
 
-    query = db.query(Task).filter(Task.project_id == project.id)
+    query = db.query(Task).filter(Task.project_id == project_id)
     if status is not None:
         query = query.filter(Task.status == status)
     if priority is not None:

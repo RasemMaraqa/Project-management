@@ -3,7 +3,40 @@ from enum import Enum
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models import User, Workspace, WorkspaceMember
+from app.models import Project, User, Workspace, WorkspaceMember
+
+
+def get_project_workspace(
+    project_id: int,
+    db: Session
+):
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id)
+        .first()
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    workspace = (
+        db.query(Workspace)
+        .filter(
+            Workspace.id == project.workspace_id
+        )
+        .first()
+    )
+
+    if not workspace:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace not found"
+        )
+
+    return project, workspace
 
 
 def get_workspace_member(

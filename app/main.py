@@ -4,7 +4,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app import routers
-from app.core import create_access_token, hash_password, settings, verify_password
+from app.core import (
+    create_access_token,
+    hash_password,
+    settings,
+    verify_password
+)
 from app.database import engine, get_db
 from app.dependencies import get_current_user
 from app.models import User
