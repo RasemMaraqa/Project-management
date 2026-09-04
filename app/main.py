@@ -37,10 +37,13 @@ def health_check():
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
 
-        return {"status": "healthy", "database": "connected"}
+        return {"status": "healthy"}
 
-    except Exception as e:
-        return {"status": "unhealthy", "database": str(e)}
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Database unavailable"
+        )
 
 
 @app.post("/users", response_model=UserResponse)

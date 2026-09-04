@@ -7,26 +7,36 @@ PostgreSQL.
 ## What you need
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- A `.env` file in this project folder with your database settings and
-  `SECRET_KEY`. Do not share or commit this file.
+- A `.env` file with your own database settings and `SECRET_KEY`
+
+Before starting the project, create your local configuration file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Open `.env` and replace `your_password` with your own PostgreSQL password.
+Also replace `your_secret_key_here` with a strong, unique secret key. Do not
+share or commit `.env`.
 
 ## Start the project with Docker
 
-1. Open Docker Desktop and wait until the Docker Engine is running.
-2. Open PowerShell in this project folder.
-3. Start the API and database:
+1. Copy `.env.example` to `.env` and set your own password and secret key.
+2. Open Docker Desktop and wait until the Docker Engine is running.
+3. Open PowerShell in this project folder.
+4. Start the API and database:
 
    ```powershell
    docker compose up --build
    ```
 
-4. In a second PowerShell window, create the database tables:
+5. In a second PowerShell window, create the database tables:
 
    ```powershell
    docker compose exec api alembic upgrade head
    ```
 
-5. Open `http://localhost:8000/docs` in your browser.
+6. Open `http://localhost:8000/docs` in your browser.
 
 The API runs at `http://localhost:8000`. The `/docs` page is the easiest way
 to see every endpoint and send test requests.
