@@ -1,41 +1,38 @@
 # Project Management API
 
-A FastAPI REST API for managing workspaces, projects, tasks, members, roles,
-and permissions. PostgreSQL is used for persistence and Alembic manages schema
-migrations.
+This is a backend for managing workspaces, projects, tasks, team members,
+roles, and permissions. It is built with FastAPI and stores data in
+PostgreSQL.
 
-## Stack
+## What you need
 
-- Python and FastAPI
-- SQLAlchemy
-- PostgreSQL 16
-- Alembic
-- Docker Compose
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- A `.env` file in this project folder with your database settings and
+  `SECRET_KEY`. Do not share or commit this file.
 
-## Run with Docker
+## Start the project with Docker
 
-1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/).
-   Wait until the Docker Engine is running.
-2. Create a `.env` file in the project root with the database and application
-   settings. Do not commit this file.
+1. Open Docker Desktop and wait until the Docker Engine is running.
+2. Open PowerShell in this project folder.
 3. Start the API and database:
 
    ```powershell
    docker compose up --build
    ```
 
-4. Apply migrations after the services are running:
+4. In a second PowerShell window, create the database tables:
 
    ```powershell
    docker compose exec api alembic upgrade head
    ```
 
-The API is available at `http://localhost:8000`. Interactive API
-documentation is available at `http://localhost:8000/docs`.
+5. Open `http://localhost:8000/docs` in your browser.
 
-The `db` service has a PostgreSQL healthcheck. The API waits until the
-database is healthy before it starts. Database data is stored in the named
-`postgres_data` volume and therefore survives container restarts.
+The API runs at `http://localhost:8000`. The `/docs` page is the easiest way
+to see every endpoint and send test requests.
+
+The API waits until PostgreSQL is ready before it starts. Database data stays
+in a Docker volume, so it remains after you stop the containers.
 
 To stop the stack while keeping data:
 
@@ -49,7 +46,7 @@ To remove the stack and all Docker-managed database data:
 docker compose down -v
 ```
 
-## Local development
+## Run without Docker
 
 Create and activate a virtual environment, then install dependencies:
 
@@ -59,31 +56,32 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-Set `DATABASE_URL` to a reachable PostgreSQL database and set a strong
-`SECRET_KEY` in `.env`. Apply migrations and start the development server:
+Set `DATABASE_URL` to a running PostgreSQL database and set a strong
+`SECRET_KEY` in `.env`. Then create the database tables and start the server:
 
 ```powershell
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-## Authentication
+## How to sign in
 
-Create a user with `POST /users`, then obtain a bearer token with
-`POST /login` using form fields:
+1. Create a user with `POST /users`.
+2. Sign in with `POST /login` using these form fields:
 
 ```text
 username=<email>
 password=<password>
 ```
 
-Include the result in protected requests:
+3. Copy the access token returned by login. For protected requests, send it
+like this:
 
 ```text
 Authorization: Bearer <access_token>
 ```
 
-## API overview
+## Main API routes
 
 | Resource | Base routes |
 | --- | --- |
@@ -94,7 +92,7 @@ Authorization: Bearer <access_token>
 | Workspace members | `/workspaces/{workspace_id}/members` |
 | Workspace roles | `/workspaces/{workspace_id}/roles` |
 
-Task routes are project-scoped:
+Tasks always belong to a project:
 
 ```text
 GET    /projects/{project_id}/tasks
@@ -104,11 +102,11 @@ PATCH  /projects/{project_id}/tasks/{task_id}
 DELETE /projects/{project_id}/tasks/{task_id}
 ```
 
-Task access is authorized through workspace membership and the corresponding
-task permission: `TASK_VIEW`, `TASK_CREATE`, `TASK_UPDATE`, or `TASK_DELETE`.
-When assigning a task, the assignee must be a member of that task's workspace.
+Your workspace role controls what you can do with tasks. Viewing, creating,
+editing, and deleting tasks each need the matching task permission. A task can
+only be assigned to a member of the same workspace.
 
-## Project structure
+## Project folders
 
 ```text
 app/
@@ -124,3 +122,9 @@ alembic/             # Database migration scripts
 docker-compose.yml   # API and PostgreSQL services
 Dockerfile           # FastAPI container image
 ```
+
+## AI assistance
+
+I used AI assistance for roughly 30% of this project. It helped with planning,
+debugging, refactoring, documentation, and review. I assembled, understood,
+and tested the project myself.
