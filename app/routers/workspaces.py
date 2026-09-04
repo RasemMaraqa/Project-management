@@ -29,7 +29,7 @@ router = APIRouter(
 
 
 @router.post(
-    "/workspaces",
+    "/",
     response_model=WorkspaceResponse
 )
 def create_workspace(
